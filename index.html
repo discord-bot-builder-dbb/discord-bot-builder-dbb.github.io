@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Discord Bot Builder</title>
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg-deep:    #111214;
+            --bg-base:    #1e1f22;
+            --bg-hover:   rgba(79,84,92,0.35);
+            --bg-active:  rgba(79,84,92,0.6);
+            --border:     #2e3035;
+            --blurple:    #5865F2;
+            --blurple-dk: #4752c4;
+            --txt:        #ffffff;
+            --txt-muted:  #96989d;
+            --txt-dim:    #5c5f66;
+            --bar-h:      48px;
+            --side-w:     152px;
+            --side-mini:  32px;
+            --mob-h:      50px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body, html {
+            height: 100%; width: 100%;
+            overflow: hidden;
+            background: var(--bg-base);
+            font-family: 'GG Sans', 'Segoe UI', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── TOOLBAR ── */
+        #toolbar {
+            position: fixed;
+            inset: 0 0 auto 0;
+            height: var(--bar-h);
+            background: var(--bg-deep);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            z-index: 300;
+            gap: 8px;
+        }
+        .logo { color: var(--blurple); font-weight: 700; font-size: .95rem; flex-shrink: 0; }
+
+        .actions-group {
+            display: flex; gap: 6px; align-items: center;
+            overflow-x: auto; scrollbar-width: none;
+        }
+        .actions-group::-webkit-scrollbar { display: none; }
+
+        .btn {
+            border: none; border-radius: 3px;
+            padding: 6px 12px; font-size: 12px; font-weight: 500;
+            cursor: pointer; white-space: nowrap; color: var(--txt);
+            flex-shrink: 0; line-height: 1;
+            transition: background .15s, opacity .15s;
+        }
+        .btn:active { opacity: .75; }
+        .btn-primary  { background: var(--blurple); }
+        .btn-primary:hover  { background: var(--blurple-dk); }
+        .btn-secondary { background: #4f545c; }
+        .btn-secondary:hover { background: #5d6269; }
+        .btn-outline {
+            background: transparent;
+            border: 1px dashed var(--blurple);
+            color: var(--blurple);
+        }
+        .btn-outline:hover { background: rgba(88,101,242,0.12); }
+
+        /* ── SHELL ── */
+        #shell {
+            position: fixed;
+            top: var(--bar-h); bottom: 0; left: 0; right: 0;
+            display: flex;
+        }
+
+        /* ── SIDEBAR DESKTOP ── */
+        #dbb-sidebar {
+            width: var(--side-w);
+            flex-shrink: 0;
+            background: var(--bg-deep);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            /* Prend exactement la hauteur du shell parent */
+            height: 100%;
+            overflow: hidden;
+            transition: width .18s ease;
+            z-index: 10;
+            position: relative; /* ancre pour #tb-dots absolute */
+        }
+        #shell.mini #dbb-sidebar { width: var(--side-mini); }
+
+        /* category list — prend tout l'espace vertical disponible */
+        #tb-list {
+            flex: 1;
+            min-height: 0; /* indispensable pour que flex+overflow-y fonctionne */
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--txt-dim) transparent;
+            padding: 4px 0;
+            transition: opacity .18s;
+        }
+        #shell.mini #tb-list { opacity: 0; pointer-events: none; }
+
+        .tb-row {
+            display: flex; align-items: center; gap: 7px;
+            padding: 5px 8px; margin: 1px 5px;
+            border-radius: 3px; cursor: pointer;
+            color: var(--txt-muted); font-size: 12px; font-weight: 500;
+            transition: background .15s, color .15s;
+            user-select: none; white-space: nowrap; overflow: hidden;
+        }
+        .tb-row:hover  { background: var(--bg-hover); color: var(--txt); }
+        .tb-row.active { background: var(--bg-active); color: var(--txt); }
+        .tb-swatch {
+            width: 10px; height: 10px;
+            border-radius: 2px; flex-shrink: 0;
+        }
+
+        /* dots (mini mode) — superposés à la liste, positionnés dans la sidebar */
+        #tb-dots {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 5px;
+            padding: 8px 0;
+            overflow-y: auto; scrollbar-width: none;
+            opacity: 0; pointer-events: none;
+            transition: opacity .18s;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 32px; /* 32px = hauteur du toggle */
+        }
+        #tb-dots::-webkit-scrollbar { display: none; }
+        #shell.mini #tb-dots { opacity: 1; pointer-events: auto; }
+
+        .tb-dot {
+            width: 16px; height: 16px;
+            border-radius: 50%; cursor: pointer; flex-shrink: 0;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .tb-dot:hover { transform: scale(1.3); box-shadow: 0 0 0 3px rgba(255,255,255,.1); }
+
+        /* toggle — toujours en bas, hauteur fixe */
+        #tb-toggle {
+            height: 32px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+            cursor: pointer; border-top: 1px solid var(--border);
+            color: var(--txt-dim); font-size: 10px;
+            transition: color .15s, background .15s;
+            user-select: none;
+        }
+        #tb-toggle:hover { color: var(--txt); background: var(--bg-hover); }
+        #tb-toggle svg { flex-shrink: 0; transition: transform .18s; }
+        #shell.mini #tb-toggle svg { transform: rotate(180deg); }
+        #tb-toggle .tgl-txt {
+            overflow: hidden; white-space: nowrap;
+            max-width: 80px; transition: opacity .18s, max-width .18s;
+        }
+        #shell.mini #tb-toggle .tgl-txt { opacity: 0; max-width: 0; }
+
+        /* ── BLOCKLY WRAP ── */
+        #blockly-wrap { flex: 1; position: relative; overflow: hidden; }
+        #blocklyDiv    { position: absolute; inset: 0; }
+
+        /* Flyout width cap — CSS uniquement, pas de conflit avec la toolbox */
+        #blocklyDiv .blocklyFlyout { max-width: 280px !important; }
+        #blocklyDiv .blocklyFlyoutBackground { fill: #2d2d30 !important; }
+
+        /* ── MOBILE BOTTOM BAR ── */
+        #mob-bar {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: var(--mob-h);
+            background: var(--bg-deep);
+            border-top: 1px solid var(--border);
+            align-items: center;
+            overflow-x: auto; gap: 5px; padding: 0 8px;
+            z-index: 200;
+            scrollbar-width: none; -webkit-overflow-scrolling: touch;
+        }
+        #mob-bar::-webkit-scrollbar { display: none; }
+
+        .mob-pill {
+            display: flex; align-items: center; gap: 5px;
+            padding: 5px 11px; border-radius: 20px;
+            border: none; background: var(--bg-hover);
+            color: var(--txt-muted); font-size: 11px; font-weight: 500;
+            cursor: pointer; white-space: nowrap; flex-shrink: 0;
+            transition: background .15s, color .15s;
+        }
+        .mob-pill .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .mob-pill.active, .mob-pill:hover { background: var(--bg-active); color: var(--txt); }
+
+        /* ── MOBILE LAYOUT ──
+           Détecte les petits écrans en portrait ET en paysage.
+           On cible : largeur ≤ 640px OU (hauteur ≤ 500px et appareil tactile)
+        */
+        @media (max-width: 640px),
+               (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+            :root { --bar-h: 40px; --mob-h: 44px; }
+
+            /* En paysage mobile, la sidebar est inutile — on garde la barre du bas */
+            #dbb-sidebar { display: none; }
+            #mob-bar     { display: flex; }
+            #shell       { bottom: var(--mob-h); }
+
+            /* Flyout : limité pour ne pas écraser le workspace */
+            #blocklyDiv .blocklyFlyout { max-width: 60vw !important; }
+
+            .btn { padding: 5px 8px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="toolbar">
+    <span class="logo">DBB</span>
+    <div class="actions-group">
+        <button id="btn-export" class="btn btn-primary">⬇ Exporter ZIP</button>
+        <button class="btn btn-secondary"
+                onclick="document.getElementById('file-import').click()">⬆ Importer</button>
+        <input type="file" id="file-import" accept=".zip" style="display:none">
+        <button class="btn btn-outline"
+                onclick="document.getElementById('file-ext').click()">+ Extension</button>
+        <input type="file" id="file-ext" accept=".js" style="display:none">
+    </div>
+</div>
+
+<div id="shell">
+    <div id="dbb-sidebar">
+        <div id="tb-list"></div>
+        <div id="tb-dots"></div>
+        <div id="tb-toggle" onclick="DBB_UI.toggleSidebar()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            <span class="tgl-txt">Réduire</span>
+        </div>
+    </div>
+
+    <div id="blockly-wrap">
+        <div id="blocklyDiv"></div>
+    </div>
+</div>
+
+<div id="mob-bar"></div>
+
+<!-- Core scripts — inchangés -->
+<script src="js/core/blocklyConfig.js"></script>
+<script src="js/core/pluginLoader.js"></script>
+<script src="js/core/projectManager.js"></script>
+
+<script>
+/* ================================================================
+   DBB_UI — couche interface uniquement, ne touche pas aux globaux
+   ================================================================ */
+const DBB_UI = {
+    isMini: false,
+
+    toggleSidebar() {
+        this.isMini = !this.isMini;
+        document.getElementById('shell').classList.toggle('mini', this.isMini);
+        document.querySelector('#tb-toggle .tgl-txt').textContent =
+            this.isMini ? 'Étendre' : 'Réduire';
+        localStorage.setItem('dbb-mini', this.isMini);
+        setTimeout(() => DBB_Config.workspace && Blockly.svgResize(DBB_Config.workspace), 200);
+    },
+
+    // Reconstruit la sidebar et la barre mobile à partir des catégories
+    buildUI(categories) {
+        const list   = document.getElementById('tb-list');
+        const dots   = document.getElementById('tb-dots');
+        const mobBar = document.getElementById('mob-bar');
+        list.innerHTML = dots.innerHTML = mobBar.innerHTML = '';
+
+        categories.forEach(cat => {
+            const name   = cat.name;
+            const colour = cat.colour || '#5865F2';
+
+            // ── Desktop row ──
+            const row = document.createElement('div');
+            row.className = 'tb-row';
+            row.dataset.name = name;
+            row.innerHTML =
+                `<span class="tb-swatch" style="background:${colour}"></span>${name}`;
+            row.addEventListener('click', () => this.select(name));
+            list.appendChild(row);
+
+            // ── Mini dot ──
+            const dot = document.createElement('div');
+            dot.className = 'tb-dot';
+            dot.style.background = colour;
+            dot.title = name;
+            dot.addEventListener('click', () => {
+                if (this.isMini) this.toggleSidebar();
+                setTimeout(() => this.select(name), 220);
+            });
+            dots.appendChild(dot);
+
+            // ── Mobile pill ──
+            const pill = document.createElement('button');
+            pill.className = 'mob-pill';
+            pill.innerHTML =
+                `<span class="dot" style="background:${colour}"></span>${name}`;
+            pill.addEventListener('click', () => {
+                document.querySelectorAll('.mob-pill').forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                this.select(name);
+            });
+            mobBar.appendChild(pill);
+        });
+
+        // Restaurer l'état mini
+        if (localStorage.getItem('dbb-mini') === 'true' && !this.isMini)
+            this.toggleSidebar();
+    },
+
+    select(name) {
+        // Highlight
+        document.querySelectorAll('.tb-row').forEach(r =>
+            r.classList.toggle('active', r.dataset.name === name));
+        // Pilote Blockly
+        DBB_Config.selectCategory(name);
+    }
+};
+
+/* ================================================================
+   Patch updateToolbox pour alimenter l'UI à chaque rechargement
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+    const orig = DBB_Config.updateToolbox.bind(DBB_Config);
+    DBB_Config.updateToolbox = function(cats) {
+        orig(cats);
+        DBB_UI.buildUI(cats);
+    };
+
+    // Resize Blockly sur changement d'orientation/taille
+    new ResizeObserver(() => {
+        DBB_Config.workspace && Blockly.svgResize(DBB_Config.workspace);
+    }).observe(document.getElementById('blockly-wrap'));
+});
+</script>
+
+<script src="js/core/app.js"></script>
+</body>
+</html>
+

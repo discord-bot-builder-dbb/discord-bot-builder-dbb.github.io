@@ -1,0 +1,92 @@
+/* ==========================================================================
+   INTERCONNECTED DARK THEME & COMPACT LAYOUT FOR DBB
+   ========================================================================== */
+
+/* 1. Barre supérieure modernisée */
+header, .top-bar, .navbar {
+    background-color: #111214 !important; /* Noir profond style Discord */
+    border-bottom: 1px solid #202225 !important;
+    padding: 10px 15px !important;
+    display: flex !important;
+    gap: 10px !important;
+    align-items: center !important;
+}
+
+/* Boutons d'action style Discord Principal / Secondaire */
+header button, .top-bar button {
+    background-color: #4f545c !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 8px 16px !important;
+    font-family: 'GG Sans', 'Segoe UI', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 13px !important;
+    transition: background-color 0.2s ease !important;
+    cursor: pointer !important;
+}
+
+header button:first-child, .btn-primary {
+    background-color: #5865F2 !important; /* Blurple Discord */
+}
+
+header button:hover, .btn-primary:hover {
+    background-color: #4752c4 !important;
+}
+
+/* 2. Toolbox Blockly Compacte et Pro */
+.blocklyToolboxDiv {
+    background-color: #111214 !important; /* Fond ultra sombre */
+    border-right: 1px solid #202225 !important;
+    width: auto !important; /* S'adapte au contenu */
+    max-width: 180px !important; /* Plus fin pour laisser de la place au workspace */
+    padding-top: 8px !important;
+}
+
+/* Ligne d'une catégorie */
+.blocklyTreeRow {
+    padding: 8px 12px !important;
+    margin: 2px 6px !important;
+    border-radius: 4px !important;
+    background-color: transparent !important;
+    transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+/* Effet Hover sur les catégories (Style salons Discord) */
+.blocklyTreeRow:hover {
+    background-color: rgba(79, 84, 92, 0.32) !important;
+}
+
+/* Catégorie active / sélectionnée */
+.blocklyTreeRowSelected {
+    background-color: rgba(79, 84, 92, 0.6) !important;
+}
+
+/* Style du texte des catégories */
+.blocklyTreeLabel {
+    color: #96989d !important; /* Gris texte Discord */
+    font-family: 'GG Sans', 'Segoe UI', Tahoma, sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+
+.blocklyTreeRowSelected .blocklyTreeLabel, 
+.blocklyTreeRow:hover .blocklyTreeLabel {
+    color: #ffffff !important; /* Devient blanc quand survolé/sélectionné */
+}
+
+/* Cache l'icône de dossier par défaut de Blockly pour épurer */
+.blocklyTreeIcon {
+    display: none !important;
+}
+
+/* 3. Ajustement du Workspace et desScrollbars */
+#blocklyDiv {
+    background-color: #1e1f22 !important; /* Couleur du fond des salons Discord */
+}
+
+.blocklyScrollbarHandle {
+    fill: #1a1b1e !important;
+    fill-opacity: 0.6 !important;
+}
+
